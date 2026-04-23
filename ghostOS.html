@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>GHOST_OS v4.2.1 — Milind Patel</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --kali-bg:#1a1a2e;--kali-surface:#16213e;--kali-panel:#0f0f23;
+  --kali-blue:#367bf5;--kali-cyan:#56c8f5;--kali-green:#4ade80;
+  --kali-red:#ef4444;--kali-yellow:#fbbf24;--kali-orange:#fb923c;
+  --kali-text:#e2e8f0;--kali-muted:#64748b;--kali-border:rgba(54,123,245,.2);
+  --win-header:#0d1117;--win-body:#0a0e17;--terminal-green:#00ff41;
+}
+html,body{width:100%;height:100%;overflow:hidden;font-family:'JetBrains Mono',monospace;background:#000;color:var(--kali-text);cursor:default;user-select:none}
+
+/* ═══ BOOT SCREEN ═══ */
+#boot{position:fixed;inset:0;z-index:9999;background:#000;display:flex;flex-direction:column;justify-content:center;padding:10% 15%;overflow:hidden;transition:opacity .6s}
+#boot.done{opacity:0;pointer-events:none}
+.boot-line{font-size:13px;line-height:1.8;color:#ccc;opacity:0;white-space:pre}
+.boot-line.ok{color:var(--kali-green)}.boot-line.warn{color:var(--kali-yellow)}.boot-line.info{color:var(--kali-cyan)}
+.boot-line.visible{opacity:1;animation:bootIn .15s ease}
+@keyframes bootIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.boot-logo{color:var(--kali-cyan);font-size:11px;line-height:1.3;margin-bottom:20px;opacity:0}
+.boot-logo.visible{opacity:1}
+.boot-bar{width:300px;height:3px;background:rgba(255,255,255,.1);border-radius:2px;margin-top:16px;overflow:hidden;opacity:0}
+.boot-bar.visible{opacity:1}
+.boot-bar-fill{height:100%;width:0;background:linear-gradient(90deg,var(--kali-blue),var(--kali-cyan));border-radius:2px;transition:width .3s}
+
+/* ═══ LOGIN SCREEN ═══ */
+#login{position:fixed;inset:0;z-index:9998;background:linear-gradient(135deg,#0a0a1a 0%,#1a1a3e 50%,#0d0d2a 100%);display:none;align-items:center;justify-content:center;flex-direction:column;gap:24px;transition:opacity .5s}
+#login.active{display:flex}#login.done{opacity:0;pointer-events:none}
+.login-avatar{width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg,var(--kali-blue),var(--kali-cyan));display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:#fff;box-shadow:0 0 40px rgba(54,123,245,.3);border:3px solid rgba(54,123,245,.4)}
+.login-user{font-size:18px;font-weight:600;color:#fff;letter-spacing:.02em}
+.login-input-wrap{position:relative;width:280px}
+.login-input{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:12px 16px;color:#fff;font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;transition:border-color .2s}
+.login-input:focus{border-color:var(--kali-blue)}
+.login-input::placeholder{color:var(--kali-muted)}
+.login-btn{background:var(--kali-blue);border:none;color:#fff;padding:10px 32px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;letter-spacing:.04em}
+.login-btn:hover{background:#4a8af7;transform:translateY(-1px)}
+.login-time{position:absolute;top:40px;font-size:48px;font-weight:300;color:rgba(255,255,255,.8);letter-spacing:.02em;font-family:'Inter',sans-serif}
+.login-date{font-size:14px;color:var(--kali-muted);margin-top:-16px;font-family:'Inter',sans-serif}
+
+/* ═══ DESKTOP ═══ */
+#desktop{position:fixed;inset:0;z-index:1;display:none;flex-direction:column;background:#1a1a2e}
+#desktop.active{display:flex}
+.wallpaper{position:absolute;inset:0;background:linear-gradient(160deg,#0a0e1a 0%,#111827 30%,#1a1a3e 60%,#0f172a 100%);z-index:0}
+.wallpaper::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 70% 30%,rgba(54,123,245,.08),transparent 60%),radial-gradient(ellipse at 30% 70%,rgba(86,200,245,.05),transparent 50%)}
+.wallpaper-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(54,123,245,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(54,123,245,.03) 1px,transparent 1px);background-size:60px 60px;pointer-events:none}
+
+/* ═══ TOP PANEL ═══ */
+.top-panel{height:32px;background:var(--kali-panel);border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;padding:0 12px;z-index:100;position:relative;gap:0;flex-shrink:0}
+.panel-left{display:flex;align-items:center;gap:2px}
+.panel-center{flex:1;display:flex;justify-content:center}
+.panel-right{display:flex;align-items:center;gap:8px}
+.panel-btn{padding:4px 10px;font-size:11px;color:var(--kali-muted);cursor:pointer;border-radius:4px;transition:all .15s;border:none;background:none;font-family:'JetBrains Mono',monospace}
+.panel-btn:hover{background:rgba(255,255,255,.08);color:var(--kali-text)}
+.panel-btn.activities{color:var(--kali-text);font-weight:600}
+.panel-clock{font-size:11px;color:var(--kali-text);font-weight:500}
+.panel-tray{display:flex;align-items:center;gap:6px}
+.tray-icon{font-size:11px;color:var(--kali-muted);cursor:pointer;padding:2px}
+.tray-dot{width:6px;height:6px;border-radius:50%;background:var(--kali-green);box-shadow:0 0 6px var(--kali-green)}
+
+/* ═══ DESKTOP ICONS ═══ */
+.desktop-area{flex:1;position:relative;z-index:1;overflow:hidden}
+.desktop-icons{position:absolute;top:20px;left:20px;display:flex;flex-direction:column;gap:8px}
+.desk-icon{width:80px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;border-radius:8px;cursor:pointer;transition:background .15s}
+.desk-icon:hover{background:rgba(54,123,245,.15)}
+.desk-icon.selected{background:rgba(54,123,245,.25)}
+.desk-icon-img{width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px}
+.desk-icon-label{font-size:10px;color:#fff;text-align:center;line-height:1.2;text-shadow:0 1px 3px rgba(0,0,0,.8);word-break:break-word}
+
+/* ═══ TASKBAR ═══ */
+.taskbar{height:40px;background:var(--kali-panel);border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;padding:0 8px;gap:4px;z-index:100;position:relative;flex-shrink:0}
+.task-item{padding:4px 14px;font-size:11px;color:var(--kali-muted);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:6px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.task-item:hover{background:rgba(255,255,255,.08)}
+.task-item.active{background:rgba(54,123,245,.15);border-color:rgba(54,123,245,.3);color:var(--kali-text)}
+.task-dot{width:4px;height:4px;border-radius:50%;flex-shrink:0}
+
+/* ═══ WINDOW SYSTEM ═══ */
+.window{position:absolute;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.08);box-shadow:0 8px 40px rgba(0,0,0,.5),0 0 0 1px rgba(0,0,0,.3);display:none;flex-direction:column;z-index:10;min-width:420px;min-height:280px}
+.window.open{display:flex}
+.window.focused{z-index:50;box-shadow:0 12px 60px rgba(0,0,0,.6),0 0 0 1px rgba(54,123,245,.2)}
+.win-header{height:36px;background:var(--win-header);display:flex;align-items:center;padding:0 12px;gap:8px;cursor:grab;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.06)}
+.win-header:active{cursor:grabbing}
+.win-dots{display:flex;gap:6px}
+.win-dot{width:12px;height:12px;border-radius:50%;cursor:pointer;transition:filter .15s;border:none}
+.win-dot.close{background:#ef4444}.win-dot.min{background:#fbbf24}.win-dot.max{background:#4ade80}
+.win-dot:hover{filter:brightness(1.3)}
+.win-title{font-size:12px;color:var(--kali-muted);flex:1;text-align:center;pointer-events:none}
+.win-body{flex:1;background:var(--win-body);overflow:hidden;display:flex;flex-direction:column}
+
+/* ═══ TERMINAL ═══ */
+.terminal-body{flex:1;padding:8px 12px;overflow-y:auto;font-size:12.5px;line-height:1.7;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.08) transparent}
+.terminal-body::-webkit-scrollbar{width:5px}
+.terminal-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
+.t-line{white-space:pre-wrap;word-break:break-all}
+.t-prompt{color:var(--kali-cyan)}
+.t-user{color:var(--kali-green)}
+.t-path{color:var(--kali-blue)}
+.t-cmd{color:#e2e8f0}
+.t-output{color:#94a3b8}
+.t-error{color:var(--kali-red)}
+.t-success{color:var(--kali-green)}
+.t-highlight{color:var(--kali-cyan)}
+.t-yellow{color:var(--kali-yellow)}
+.t-bold{font-weight:700;color:#fff}
+.input-line{display:flex;align-items:center;gap:0;flex-shrink:0;padding:0 12px 8px}
+.input-line .t-prompt{white-space:nowrap}
+.term-input{flex:1;background:none;border:none;color:#e2e8f0;font-family:'JetBrains Mono',monospace;font-size:12.5px;outline:none;caret-color:var(--kali-cyan);margin-left:4px}
+
+/* ═══ FILE MANAGER ═══ */
+.fm-toolbar{height:36px;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;padding:0 12px;gap:8px}
+.fm-nav-btn{width:26px;height:26px;border-radius:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:var(--kali-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;transition:all .15s}
+.fm-nav-btn:hover{background:rgba(255,255,255,.1);color:var(--kali-text)}
+.fm-path{flex:1;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--kali-text);font-family:'JetBrains Mono',monospace}
+.fm-content{flex:1;display:flex;overflow:hidden}
+.fm-sidebar{width:180px;background:rgba(0,0,0,.2);border-right:1px solid rgba(255,255,255,.06);padding:12px 8px;overflow-y:auto}
+.fm-sidebar-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;font-size:11px;color:var(--kali-muted);cursor:pointer;transition:all .15s}
+.fm-sidebar-item:hover{background:rgba(255,255,255,.06);color:var(--kali-text)}
+.fm-sidebar-item.active{background:rgba(54,123,245,.15);color:var(--kali-cyan)}
+.fm-files{flex:1;padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;align-content:start;overflow-y:auto}
+.fm-file{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;border-radius:8px;cursor:pointer;transition:background .15s}
+.fm-file:hover{background:rgba(54,123,245,.12)}
+.fm-file-icon{font-size:28px}
+.fm-file-name{font-size:10px;color:var(--kali-text);text-align:center;line-height:1.2;word-break:break-word}
+
+/* ═══ NEOFETCH ═══ */
+.neofetch{display:flex;gap:20px;padding:4px 0}
+.neofetch-logo{color:var(--kali-cyan);font-size:10px;line-height:1.2;white-space:pre;flex-shrink:0}
+.neofetch-info{font-size:12px;line-height:1.7}
+.nf-label{color:var(--kali-cyan);font-weight:600}
+.nf-val{color:var(--kali-text)}
+.nf-colors{display:flex;gap:2px;margin-top:4px}
+.nf-color{width:22px;height:10px;border-radius:2px}
+
+/* ═══ RIGHT-CLICK MENU ═══ */
+.ctx-menu{position:fixed;z-index:999;background:var(--kali-panel);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:6px;min-width:200px;box-shadow:0 8px 30px rgba(0,0,0,.5);display:none}
+.ctx-menu.open{display:block}
+.ctx-item{padding:6px 12px;font-size:11px;color:var(--kali-text);border-radius:5px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .1s}
+.ctx-item:hover{background:rgba(54,123,245,.2)}
+.ctx-sep{height:1px;background:rgba(255,255,255,.06);margin:4px 8px}
+.ctx-item-key{margin-left:auto;color:var(--kali-muted);font-size:9px}
+
+/* ═══ NOTIFICATION ═══ */
+.notification{position:fixed;top:40px;right:16px;z-index:200;background:var(--kali-panel);border:1px solid rgba(54,123,245,.2);border-radius:10px;padding:14px 18px;width:300px;box-shadow:0 8px 30px rgba(0,0,0,.4);transform:translateX(120%);transition:transform .35s cubic-bezier(.16,1,.3,1);display:flex;gap:12px;align-items:flex-start}
+.notification.show{transform:translateX(0)}
+.notif-icon{font-size:20px;flex-shrink:0}
+.notif-text{flex:1}
+.notif-title{font-size:12px;font-weight:600;color:var(--kali-text);margin-bottom:2px}
+.notif-body{font-size:11px;color:var(--kali-muted);line-height:1.4}
+
+/* ═══ SCANLINES ═══ */
+.scanlines{position:fixed;inset:0;z-index:9000;pointer-events:none;opacity:.03;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(255,255,255,.08) 2px,rgba(255,255,255,.08) 4px)}
+
+/* ═══ SELECTION ═══ */
+::selection{background:rgba(54,123,245,.3);color:#fff}
+
+/* ═══ WALLPAPER QUOTE ═══ */
+.wallpaper-quote{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:0;pointer-events:none;padding:80px 120px}
+.wallpaper-quote-text{font-family:'Inter','JetBrains Mono',monospace;font-size:15px;line-height:2;color:rgba(255,255,255,.35);text-align:center;max-width:680px;font-weight:400;letter-spacing:.02em;font-style:italic}
+.wallpaper-quote-text .quote-author{display:block;margin-top:16px;font-size:11px;font-style:normal;letter-spacing:.14em;text-transform:uppercase;color:rgba(86,200,245,.40);font-weight:700}
+
+/* ═══ ACTIVITIES LAUNCHER ═══ */
+.launcher-overlay{position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.82);backdrop-filter:blur(24px);display:flex;flex-direction:column;align-items:center;padding:60px 40px 40px;opacity:0;pointer-events:none;transition:opacity .3s cubic-bezier(.16,1,.3,1)}
+.launcher-overlay.open{opacity:1;pointer-events:all}
+.launcher-search{width:420px;padding:14px 20px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:#fff;font-family:'JetBrains Mono',monospace;font-size:14px;outline:none;margin-bottom:48px;transition:border-color .2s,box-shadow .2s;text-align:center}
+.launcher-search:focus{border-color:var(--kali-blue);box-shadow:0 0 20px rgba(54,123,245,.2)}
+.launcher-search::placeholder{color:var(--kali-muted);text-align:center}
+.launcher-grid{display:grid;grid-template-columns:repeat(5,96px);gap:20px;justify-content:center}
+.launcher-app{display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:14px;cursor:pointer;transition:all .2s;border:1px solid transparent}
+.launcher-app:hover{background:rgba(54,123,245,.12);border-color:rgba(54,123,245,.2);transform:translateY(-3px)}
+.launcher-app-icon{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;transition:transform .2s}
+.launcher-app:hover .launcher-app-icon{transform:scale(1.1)}
+.launcher-app-name{font-size:11px;color:var(--kali-text);text-align:center;font-weight:500}
+.launcher-cat{font-size:10px;color:var(--kali-muted);letter-spacing:.14em;text-transform:uppercase;font-weight:700;margin:10px 0 14px;font-family:'JetBrains Mono',monospace;width:100%;text-align:left;max-width:540px}
+
+/* ═══ MINI-GAME SHARED ═══ */
+.game-area{flex:1;padding:16px;overflow-y:auto;font-size:12px;line-height:1.7;font-family:'JetBrains Mono',monospace}
+.game-btn{padding:8px 18px;border-radius:7px;border:1px solid rgba(54,123,245,.3);background:rgba(54,123,245,.1);color:var(--kali-cyan);font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer;transition:all .2s;font-weight:600}
+.game-btn:hover{background:rgba(54,123,245,.2);border-color:var(--kali-cyan);box-shadow:0 0 12px rgba(54,123,245,.2)}
+.game-btn.danger{border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.1);color:var(--kali-red)}
+.game-btn.danger:hover{background:rgba(239,68,68,.2);border-color:var(--kali-red)}
+.game-btn.success{border-color:rgba(74,222,128,.3);background:rgba(74,222,128,.1);color:var(--kali-green)}
+.game-output{background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:12px;margin:10px 0;max-height:200px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.08) transparent}
+.game-progress{height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;margin:10px 0}
+.game-progress-fill{height:100%;border-radius:2px;transition:width .3s;width:0}
+.port-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px}
+.port-open{color:var(--kali-green)}.port-closed{color:var(--kali-red)}.port-filtered{color:var(--kali-yellow)}
+</style>
+</head>
+<body>
+
+<!-- BOOT SCREEN -->
+<div id="boot">
+  <pre class="boot-logo" id="bootLogo">
+   ██████╗ ██╗  ██╗ ██████╗ ███████╗████████╗     ██████╗ ███████╗
+  ██╔════╝ ██║  ██║██╔═══██╗██╔════╝╚══██╔══╝    ██╔═══██╗██╔════╝
+  ██║  ███╗███████║██║   ██║███████╗   ██║       ██║   ██║███████╗
+  ██║   ██║██╔══██║██║   ██║╚════██║   ██║       ██║   ██║╚════██║
+  ╚██████╔╝██║  ██║╚██████╔╝███████║   ██║       ╚██████╔╝███████║
+   ╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚══════╝   ╚═╝        ╚═════╝ ╚══════╝  v4.2.1</pre>
+  <div id="bootLines"></div>
+  <div class="boot-bar" id="bootBar"><div class="boot-bar-fill" id="bootBarFill"></div></div>
+</div>
+
+
+
+<!-- DESKTOP -->
+<div id="desktop">
+  <div class="wallpaper"><div class="wallpaper-grid"></div><div class="wallpaper-quote"><div class="wallpaper-quote-text">&ldquo;Is any of it real? I mean, look at this. Look at it! A world built on fantasy. Synthetic emotions in the form of pills. Psychological warfare in the form of advertising. Mind-altering chemicals in the form of&nbsp;&hellip; food! Brainwashing seminars in the form of media. Controlled isolated bubbles in the form of social networks. Real? You want to talk about reality? We haven&rsquo;t lived in anything remotely close to it since the turn of the century.&rdquo;<span class="quote-author">&mdash; Elliot Alderson, Mr. Robot</span></div></div></div>
+
+  <!-- TOP PANEL -->
+  <div class="top-panel">
+    <div class="panel-left">
+      <button class="panel-btn activities" onclick="toggleLauncher()">⚡ Activities</button>
+      <button class="panel-btn" onclick="openApp('terminal')">Terminal</button>
+      <button class="panel-btn" onclick="openApp('files')">Files</button>
+    </div>
+    <div class="panel-center">
+      <span class="panel-clock" id="panelClock">00:00</span>
+    </div>
+    <div class="panel-right">
+      <div class="panel-tray">
+        <span class="tray-icon">🔒</span>
+        <span class="tray-icon">📶</span>
+        <span class="tray-icon">🔊</span>
+        <span class="tray-dot"></span>
+      </div>
+      <button class="panel-btn" onclick="window.location.href='main.html'" title="Back to Portfolio">⏻</button>
+    </div>
+  </div>
+
+  <!-- DESKTOP AREA -->
+  <div class="desktop-area" id="desktopArea" oncontextmenu="showCtxMenu(event)">
+    <div class="desktop-icons">
+      <div class="desk-icon" ondblclick="openApp('terminal')">
+        <div class="desk-icon-img" style="background:rgba(0,255,65,.12);border:1px solid rgba(0,255,65,.25)">🖥️</div>
+        <div class="desk-icon-label">Terminal</div>
+      </div>
+      <div class="desk-icon" ondblclick="openApp('files')">
+        <div class="desk-icon-img" style="background:rgba(54,123,245,.12);border:1px solid rgba(54,123,245,.25)">📁</div>
+        <div class="desk-icon-label">Files</div>
+      </div>
+      <div class="desk-icon" ondblclick="openApp('browser')">
+        <div class="desk-icon-img" style="background:rgba(86,200,245,.12);border:1px solid rgba(86,200,245,.25)">🌐</div>
+        <div class="desk-icon-label">Browser</div>
+      </div>
+      <div class="desk-icon" ondblclick="openApp('monitor')">
+        <div class="desk-icon-img" style="background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.25)">📊</div>
+        <div class="desk-icon-label">System Monitor</div>
+      </div>
+      <div class="desk-icon" ondblclick="openApp('text')">
+        <div class="desk-icon-img" style="background:rgba(236,72,153,.12);border:1px solid rgba(236,72,153,.25)">📝</div>
+        <div class="desk-icon-label">about.txt</div>
+      </div>
+      <div class="desk-icon" ondblclick="window.location.href='main.html'">
+        <div class="desk-icon-img" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25)">🔙</div>
+        <div class="desk-icon-label">Back to Portfolio</div>
+      </div>
+    </div>
+
+    <!-- TERMINAL WINDOW -->
+    <div class="window" id="win-terminal" style="width:700px;height:440px;left:120px;top:40px">
+      <div class="win-header" onmousedown="startDrag(event,'win-terminal')">
+        <div class="win-dots"><div class="win-dot close" onclick="closeApp('terminal')"></div><div class="win-dot min" onclick="minimizeApp('terminal')"></div><div class="win-dot max" onclick="maximizeApp('terminal')"></div></div>
+        <div class="win-title">milind@ghost-os: ~</div>
+      </div>
+      <div class="win-body">
+        <div class="terminal-body" id="termOutput"></div>
+        <div class="input-line">
+          <span class="t-prompt"><span class="t-user">milind</span>@<span class="t-highlight">ghost-os</span>:<span class="t-path">~</span>$ </span>
+          <input type="text" class="term-input" id="termInput" autocomplete="off" spellcheck="false"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- FILE MANAGER WINDOW -->
+    <div class="window" id="win-files" style="width:680px;height:420px;left:200px;top:80px">
+      <div class="win-header" onmousedown="startDrag(event,'win-files')">
+        <div class="win-dots"><div class="win-dot close" onclick="closeApp('files')"></div><div class="win-dot min" onclick="minimizeApp('files')"></div><div class="win-dot max" onclick="maximizeApp('files')"></div></div>
+        <div class="win-title">📁 File Manager — /home/milind</div>
+      </div>
+      <div class="win-body">
+        <div class="fm-toolbar">
+          <div class="fm-nav-btn">←</div><div class="fm-nav-btn">→</div><div class="fm-nav-btn">↑</div>
+          <div class="fm-path" id="fmPath">/home/milind</div>
+        </div>
+        <div class="fm-content">
+          <div class="fm-sidebar">
+            <div class="fm-sidebar-item active" onclick="fmNavigate('/home/milind')">🏠 Home</div>
+            <div class="fm-sidebar-item" onclick="fmNavigate('/home/milind/projects')">📂 Projects</div>
+            <div class="fm-sidebar-item" onclick="fmNavigate('/home/milind/certs')">📂 Certs</div>
+            <div class="fm-sidebar-item" onclick="fmNavigate('/home/milind/skills')">📂 Skills</div>
+            <div class="fm-sidebar-item" onclick="fmNavigate('/home/milind/.secret')">🔒 .secret</div>
+          </div>
+          <div class="fm-files" id="fmFiles"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BROWSER WINDOW -->
+    <div class="window" id="win-browser" style="width:700px;height:460px;left:160px;top:60px">
+      <div class="win-header" onmousedown="startDrag(event,'win-browser')">
+        <div class="win-dots"><div class="win-dot close" onclick="closeApp('browser')"></div><div class="win-dot min" onclick="minimizeApp('browser')"></div><div class="win-dot max" onclick="maximizeApp('browser')"></div></div>
+        <div class="win-title">🌐 Ghost Browser — Portfolio</div>
+      </div>
+      <div class="win-body" id="browserBody" style="padding:24px;overflow-y:auto;background:linear-gradient(180deg,#0d1117,#0a0e17)">
+        <div style="text-align:center;margin-bottom:24px">
+          <div style="font-size:28px;font-weight:700;color:#fff;margin-bottom:6px">Milind Patel</div>
+          <div style="font-size:13px;color:var(--kali-cyan);letter-spacing:.06em">COMPUTER ENGINEERING STUDENT & ASPIRING PENTESTER</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+          <div style="background:rgba(54,123,245,.08);border:1px solid rgba(54,123,245,.2);border-radius:10px;padding:16px;text-align:center">
+            <div style="font-size:24px;font-weight:700;color:var(--kali-cyan)">8.0</div><div style="font-size:10px;color:var(--kali-muted);margin-top:4px">CGPA</div>
+          </div>
+          <div style="background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2);border-radius:10px;padding:16px;text-align:center">
+            <div style="font-size:24px;font-weight:700;color:var(--kali-green)">3+</div><div style="font-size:10px;color:var(--kali-muted);margin-top:4px">PROJECTS BUILT</div>
+          </div>
+        </div>
+        <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:16px;font-size:12px;color:var(--kali-muted);line-height:1.7;margin-bottom:16px">
+          Curious Computer Engineering student with hands-on experience in cybersecurity labs, VAPT, networking, and security tools. Looking for a role to strengthen skills and grow within a professional cybersecurity environment.
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span style="padding:4px 10px;border-radius:5px;background:rgba(54,123,245,.1);border:1px solid rgba(54,123,245,.2);font-size:10px;color:var(--kali-cyan)">VAPT</span>
+          <span style="padding:4px 10px;border-radius:5px;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.2);font-size:10px;color:var(--kali-green)">OWASP Top 10</span>
+          <span style="padding:4px 10px;border-radius:5px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.2);font-size:10px;color:var(--kali-yellow)">Networking</span>
+          <span style="padding:4px 10px;border-radius:5px;background:rgba(236,72,153,.1);border:1px solid rgba(236,72,153,.2);font-size:10px;color:#f472b6">Packet Analysis</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SYSTEM MONITOR WINDOW -->
+    <div class="window" id="win-monitor" style="width:500px;height:380px;left:240px;top:100px">
+      <div class="win-header" onmousedown="startDrag(event,'win-monitor')">
+        <div class="win-dots"><div class="win-dot close" onclick="closeApp('monitor')"></div><div class="win-dot min" onclick="minimizeApp('monitor')"></div><div class="win-dot max" onclick="maximizeApp('monitor')"></div></div>
+        <div class="win-title">📊 System Monitor</div>
+      </div>
+      <div class="win-body" style="padding:16px;overflow-y:auto" id="monitorBody"></div>
+    </div>
+
+    <!-- TEXT EDITOR WINDOW -->
+    <div class="window" id="win-text" style="width:550px;height:400px;left:180px;top:70px">
+      <div class="win-header" onmousedown="startDrag(event,'win-text')">
+        <div class="win-dots"><div class="win-dot close" onclick="closeApp('text')"></div><div class="win-dot min" onclick="minimizeApp('text')"></div><div class="win-dot max" onclick="maximizeApp('text')"></div></div>
+        <div class="win-title" id="textTitle">📝 Text Editor — about.txt</div>
+      </div>
+      <div class="win-body" style="padding:16px;overflow-y:auto;font-size:12px;line-height:1.8;color:var(--kali-text)" id="textBody"></div>
+    </div>
+
+    <!-- WIFI CRACKER WINDOW -->
+    <div class="window" id="win-wifi" style="width:560px;height:420px;left:150px;top:55px">
+      <div class="win-header" onmousedown="startDrag(event,'win-wifi')">
+        <div class="win-dots"><div class="win-dot close" onclick="closeApp('wifi')"></div><div class="win-dot min" onclick="minimizeApp('wifi')"></div><div class="win-dot max" onclick="maximizeApp('wifi')"></div></div>
+        <div class="win-title">📡 WiFi Cracker v3.1</div>
+      </div>
+      <div class="win-body game-area" id="wifiBody">
+        <div style="color:var(--kali-cyan);margin-bottom:12px;font-weight:600">📡 Nearby Networks Detected:</div>
+        <div id="wifiNetworks"></div>
+        <div style="margin-top:14px;display:flex;gap:8px">
+          <button class="game-btn" onclick="startWifiCrack()">▶ Start Cracking</button>
+          <button class="game-btn danger" onclick="resetWifi()">↺ Reset</button>
+        </div>
+        <div class="game-progress" id="wifiProgress" style="margin-top:12px"><div class="game-progress-fill" id="wifiProgressFill" style="background:linear-gradient(90deg,var(--kali-blue),var(--kali-cyan))"></div></div>
+        <div class="game-output" id="wifiLog" style="margin-top:8px;font-size:11px;color:var(--kali-muted)"></div>
+      </div>
+    </div>
+
+    <!-- PORT SCANNER WINDOW -->
+    <div class="window" id="win-portscan" style="width:520px;height:400px;left:220px;top:90px">
+      <div class="win-header" onmousedown="startDrag(event,'win-portscan')">
+        <div class="win-dots"><div class="win-dot close" onclick="closeApp('portscan')"></div><div class="win-dot min" onclick="minimizeApp('portscan')"></div><div class="win-dot max" onclick="maximizeApp('portscan')"></div></div>
+        <div class="win-title">🔍 Port Scanner — Nmap Lite</div>
+      </div>
+      <div class="win-body game-area" id="portscanBody">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+          <input type="text" id="scanTarget" value="192.168.1.1" style="flex:1;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:8px 12px;color:#fff;font-family:'JetBrains Mono',monospace;font-size:12px;outline:none" placeholder="Target IP...">
+          <button class="game-btn" onclick="startPortScan()">Scan</button>
+        </div>
+        <div class="game-output" id="portResults" style="max-height:260px"></div>
+      </div>
+    </div>
+
+    <!-- HASH DECODER WINDOW -->
+    <div class="window" id="win-hash" style="width:540px;height:400px;left:190px;top:75px">
+      <div class="win-header" onmousedown="startDrag(event,'win-hash')">
+        <div class="win-dots"><div class="win-dot close" onclick="closeApp('hash')"></div><div class="win-dot min" onclick="minimizeApp('hash')"></div><div class="win-dot max" onclick="maximizeApp('hash')"></div></div>
+        <div class="win-title">🔑 Hash Decoder — CrackStation</div>
+      </div>
+      <div class="win-body game-area" id="hashBody">
+        <div style="color:var(--kali-cyan);margin-bottom:8px;font-weight:600">🔑 Decode the Hash Challenge</div>
+        <div style="color:var(--kali-muted);font-size:11px;margin-bottom:14px">Identify the hash type and crack it to earn points.</div>
+        <div style="display:flex;gap:8px;margin-bottom:6px">
+          <span style="color:var(--kali-yellow);font-size:11px" id="hashScore">Score: 0</span>
+          <span style="color:var(--kali-muted);font-size:11px;margin-left:auto" id="hashRound">Round 1/5</span>
+        </div>
+        <div style="background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:14px;margin-bottom:12px;word-break:break-all;font-size:12px;color:var(--kali-text)" id="hashValue">Loading...</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px" id="hashOptions"></div>
+        <div class="game-output" id="hashLog" style="font-size:11px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TASKBAR -->
+  <div class="taskbar" id="taskbar"></div>
+</div>
+
+<!-- ACTIVITIES LAUNCHER -->
+<div class="launcher-overlay" id="launcher">
+  <input type="text" class="launcher-search" id="launcherSearch" placeholder="Type to search apps..." autocomplete="off">
+  <div class="launcher-cat">System Tools</div>
+  <div class="launcher-grid" id="launcherGrid">
+    <div class="launcher-app" onclick="launchApp('terminal')"><div class="launcher-app-icon" style="background:rgba(0,255,65,.12);border:1px solid rgba(0,255,65,.25)">🖥️</div><div class="launcher-app-name">Terminal</div></div>
+    <div class="launcher-app" onclick="launchApp('files')"><div class="launcher-app-icon" style="background:rgba(54,123,245,.12);border:1px solid rgba(54,123,245,.25)">📁</div><div class="launcher-app-name">Files</div></div>
+    <div class="launcher-app" onclick="launchApp('browser')"><div class="launcher-app-icon" style="background:rgba(86,200,245,.12);border:1px solid rgba(86,200,245,.25)">🌐</div><div class="launcher-app-name">Browser</div></div>
+    <div class="launcher-app" onclick="launchApp('monitor')"><div class="launcher-app-icon" style="background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.25)">📊</div><div class="launcher-app-name">Monitor</div></div>
+    <div class="launcher-app" onclick="launchApp('text')"><div class="launcher-app-icon" style="background:rgba(236,72,153,.12);border:1px solid rgba(236,72,153,.25)">📝</div><div class="launcher-app-name">Editor</div></div>
+  </div>
+  <div class="launcher-cat" style="margin-top:20px">Hacking Tools</div>
+  <div class="launcher-grid">
+    <div class="launcher-app" onclick="launchApp('wifi')"><div class="launcher-app-icon" style="background:rgba(0,255,65,.1);border:1px solid rgba(0,255,65,.2)">📡</div><div class="launcher-app-name">WiFi Cracker</div></div>
+    <div class="launcher-app" onclick="launchApp('portscan')"><div class="launcher-app-icon" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2)">🔍</div><div class="launcher-app-name">Port Scanner</div></div>
+    <div class="launcher-app" onclick="launchApp('hash')"><div class="launcher-app-icon" style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.2)">🔑</div><div class="launcher-app-name">Hash Decoder</div></div>
+    <div class="launcher-app" onclick="window.location.href='main.html'"><div class="launcher-app-icon" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2)">🔙</div><div class="launcher-app-name">Portfolio</div></div>
+  </div>
+</div>
+
+<!-- RIGHT-CLICK MENU -->
+<div class="ctx-menu" id="ctxMenu">
+  <div class="ctx-item" onclick="openApp('terminal')">🖥️ Open Terminal<span class="ctx-item-key">Ctrl+T</span></div>
+  <div class="ctx-item" onclick="openApp('files')">📁 Files<span class="ctx-item-key">Ctrl+E</span></div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="openApp('browser')">🌐 Browser</div>
+  <div class="ctx-item" onclick="openApp('monitor')">📊 System Monitor</div>
+  <div class="ctx-item" onclick="openApp('text')">📝 about.txt</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="openApp('wifi')">📡 WiFi Cracker</div>
+  <div class="ctx-item" onclick="openApp('portscan')">🔍 Port Scanner</div>
+  <div class="ctx-item" onclick="openApp('hash')">🔑 Hash Decoder</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="window.location.href='main.html'">🔙 Back to Portfolio</div>
+</div>
+
+<!-- NOTIFICATION -->
+<div class="notification" id="notification"><span class="notif-icon">🔓</span><div class="notif-text"><div class="notif-title">Access Granted</div><div class="notif-body">Welcome to GHOST_OS. You've earned root access.</div></div></div>
+
+<!-- SCANLINES -->
+<div class="scanlines"></div>
+
+<script>
+/* ═══════════════════════════════════════════
+   BOOT SEQUENCE
+═══════════════════════════════════════════ */
+const bootLines=[
+  {t:'[BIOS] POST check .................... OK',c:'ok',d:0},
+  {t:'[GRUB] Loading GHOST_OS kernel 6.1.0-kali9',c:'info',d:200},
+  {t:'[KERN] Initializing security subsystems...',c:'',d:400},
+  {t:'[OK] Firewall module loaded',c:'ok',d:600},
+  {t:'[OK] IDS/IPS engine active',c:'ok',d:750},
+  {t:'[OK] Cryptographic services ready',c:'ok',d:900},
+  {t:'[WARN] Stealth mode: ENGAGED',c:'warn',d:1050},
+  {t:'[OK] Network interfaces configured',c:'ok',d:1200},
+  {t:'[OK] Tor/VPN tunnels established',c:'ok',d:1350},
+  {t:'[OK] Exploit database synced (42,891 entries)',c:'ok',d:1500},
+  {t:'[INFO] Welcome, Operator. All systems green.',c:'info',d:1700},
+];
+(function runBoot(){
+  const cont=document.getElementById('bootLines');
+  const logo=document.getElementById('bootLogo');
+  const bar=document.getElementById('bootBar');
+  const fill=document.getElementById('bootBarFill');
+  setTimeout(()=>{logo.classList.add('visible')},100);
+  setTimeout(()=>{bar.classList.add('visible')},300);
+  bootLines.forEach(l=>{
+    setTimeout(()=>{
+      const div=document.createElement('div');
+      div.className='boot-line '+l.c;
+      div.textContent=l.t;
+      cont.appendChild(div);
+      requestAnimationFrame(()=>div.classList.add('visible'));
+      fill.style.width=Math.min(((l.d+300)/2200)*100,100)+'%';
+    },l.d);
+  });
+  setTimeout(()=>{fill.style.width='100%'},2000);
+  setTimeout(()=>{
+    document.getElementById('boot').classList.add('done');
+    setTimeout(()=>{
+      document.getElementById('desktop').classList.add('active');
+      openApp('terminal');
+      setTimeout(()=>{
+        const n=document.getElementById('notification');
+        n.classList.add('show');
+        setTimeout(()=>n.classList.remove('show'),4000);
+      },600);
+      initMonitor();
+      fmNavigate('/home/milind');
+      showTextFile('about.txt');
+    },400);
+  },2500);
+})();
+
+/* ═══════════════════════════════════════════
+   CLOCK
+═══════════════════════════════════════════ */
+function updateClock(){
+  const n=new Date();
+  document.getElementById('panelClock').textContent=n.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})+' '+n.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false});
+}
+setInterval(updateClock,1000);updateClock();
+
+/* ═══════════════════════════════════════════
+   WINDOW MANAGEMENT
+═══════════════════════════════════════════ */
+const apps={terminal:{open:false},files:{open:false},browser:{open:false},monitor:{open:false},text:{open:false},wifi:{open:false},portscan:{open:false},hash:{open:false}};
+let topZ=50;
+function openApp(name){
+  const w=document.getElementById('win-'+name);
+  if(!w)return;
+  w.classList.add('open');
+  apps[name].open=true;
+  focusWin(name);
+  updateTaskbar();
+  if(name==='terminal'){
+    const inp=document.getElementById('termInput');
+    if(inp)setTimeout(()=>inp.focus(),100);
+    if(!document.getElementById('termOutput').innerHTML)printWelcome();
+  }
+}
+function closeApp(name){
+  const w=document.getElementById('win-'+name);
+  if(w)w.classList.remove('open');
+  apps[name].open=false;
+  updateTaskbar();
+}
+function minimizeApp(name){
+  const w=document.getElementById('win-'+name);
+  if(w)w.classList.remove('open');
+  updateTaskbar();
+}
+function maximizeApp(name){
+  const w=document.getElementById('win-'+name);
+  if(!w)return;
+  const da=document.getElementById('desktopArea');
+  if(w.dataset.maximized==='1'){
+    w.style.left=w.dataset.ol;w.style.top=w.dataset.ot;w.style.width=w.dataset.ow;w.style.height=w.dataset.oh;
+    w.dataset.maximized='0';
+  }else{
+    w.dataset.ol=w.style.left;w.dataset.ot=w.style.top;w.dataset.ow=w.style.width;w.dataset.oh=w.style.height;
+    w.style.left='0';w.style.top='0';w.style.width=da.offsetWidth+'px';w.style.height=da.offsetHeight+'px';
+    w.dataset.maximized='1';
+  }
+}
+function focusWin(name){
+  document.querySelectorAll('.window').forEach(w=>w.classList.remove('focused'));
+  const w=document.getElementById('win-'+name);
+  if(w){w.classList.add('focused');w.style.zIndex=++topZ;}
+  updateTaskbar();
+}
+document.querySelectorAll('.window').forEach(w=>{
+  w.addEventListener('mousedown',()=>{
+    const name=w.id.replace('win-','');
+    focusWin(name);
+  });
+});
+
+/* ═══ DRAG ═══ */
+let dragEl=null,dragOX=0,dragOY=0;
+function startDrag(e,id){
+  const w=document.getElementById(id);
+  if(w.dataset.maximized==='1')return;
+  dragEl=w;dragOX=e.clientX-w.offsetLeft;dragOY=e.clientY-w.offsetTop;
+  e.preventDefault();
+}
+document.addEventListener('mousemove',e=>{
+  if(!dragEl)return;
+  dragEl.style.left=Math.max(0,e.clientX-dragOX)+'px';
+  dragEl.style.top=Math.max(0,e.clientY-dragOY)+'px';
+});
+document.addEventListener('mouseup',()=>{dragEl=null});
+
+/* ═══ TASKBAR ═══ */
+function updateTaskbar(){
+  const tb=document.getElementById('taskbar');
+  const icons={terminal:'🖥️',files:'📁',browser:'🌐',monitor:'📊',text:'📝',wifi:'📡',portscan:'🔍',hash:'🔑'};
+  const names={terminal:'Terminal',files:'Files',browser:'Browser',monitor:'Monitor',text:'Editor',wifi:'WiFi Cracker',portscan:'Port Scan',hash:'Hash Decode'};
+  tb.innerHTML='';
+  Object.keys(apps).forEach(name=>{
+    if(!apps[name].open&&!document.getElementById('win-'+name).classList.contains('open'))return;
+    const div=document.createElement('div');
+    const w=document.getElementById('win-'+name);
+    const isFocused=w.classList.contains('focused')&&w.classList.contains('open');
+    div.className='task-item'+(isFocused?' active':'');
+    const dotColor=isFocused?'var(--kali-cyan)':'var(--kali-muted)';
+    div.innerHTML=`<span class="task-dot" style="background:${dotColor}"></span>${icons[name]} ${names[name]}`;
+    div.onclick=()=>{
+      if(w.classList.contains('open')&&isFocused){minimizeApp(name)}
+      else{w.classList.add('open');focusWin(name)}
+    };
+    tb.appendChild(div);
+  });
+}
+
+/* ═══ CONTEXT MENU ═══ */
+function showCtxMenu(e){
+  e.preventDefault();
+  const m=document.getElementById('ctxMenu');
+  m.classList.add('open');
+  m.style.left=Math.min(e.clientX,window.innerWidth-220)+'px';
+  m.style.top=Math.min(e.clientY,window.innerHeight-240)+'px';
+}
+document.addEventListener('click',()=>document.getElementById('ctxMenu').classList.remove('open'));
+
+/* ═══════════════════════════════════════════
+   FILE MANAGER
+═══════════════════════════════════════════ */
+const FS={
+  '/home/milind':{type:'dir',children:{'about.txt':{type:'file',icon:'📄'},'resume.pdf':{type:'file',icon:'📑'},'projects':{type:'dir',icon:'📂'},'skills':{type:'dir',icon:'📂'},'certs':{type:'dir',icon:'📂'},'.secret':{type:'dir',icon:'🔒'},'.bashrc':{type:'file',icon:'⚙️'},'internship_notes.md':{type:'file',icon:'📝'}}},
+  '/home/milind/projects':{type:'dir',children:{'wifi-attack-detector':{type:'dir',icon:'📂'},'secure-share':{type:'dir',icon:'📂'},'job-app-tracker':{type:'dir',icon:'📂'},'README.md':{type:'file',icon:'📄'}}},
+  '/home/milind/skills':{type:'dir',children:{'web-security.conf':{type:'file',icon:'🛡️'},'network-analysis.conf':{type:'file',icon:'🌐'},'python-automation.py':{type:'file',icon:'🐍'},'vuln-assessment.sh':{type:'file',icon:'📋'}}},
+  '/home/milind/certs':{type:'dir',children:{'Google-Cybersecurity.cert':{type:'file',icon:'🎖️'},'TryHackMe-PreSec.cert':{type:'file',icon:'🎖️'},'TryHackMe-JrPentester.cert':{type:'file',icon:'🎖️'}}},
+  '/home/milind/.secret':{type:'dir',children:{'flag.txt':{type:'file',icon:'🏴'},'exploit_db.enc':{type:'file',icon:'🔐'},'targets.lst':{type:'file',icon:'🎯'}}},
+};
+let currentPath='/home/milind';
+function fmNavigate(path){
+  currentPath=path;
+  document.getElementById('fmPath').textContent=path;
+  const cont=document.getElementById('fmFiles');
+  cont.innerHTML='';
+  const dir=FS[path];
+  if(!dir||!dir.children)return;
+  document.querySelectorAll('.fm-sidebar-item').forEach(el=>{
+    el.classList.toggle('active',el.textContent.includes(path.split('/').pop())||path==='/home/milind'&&el.textContent.includes('Home'));
+  });
+  Object.entries(dir.children).forEach(([name,info])=>{
+    const div=document.createElement('div');
+    div.className='fm-file';
+    div.innerHTML=`<div class="fm-file-icon">${info.icon}</div><div class="fm-file-name">${name}</div>`;
+    div.ondblclick=()=>{
+      if(info.type==='dir'&&FS[path+'/'+name])fmNavigate(path+'/'+name);
+      else{showTextFile(name);openApp('text');}
+    };
+    cont.appendChild(div);
+  });
+}
+
+/* ═══════════════════════════════════════════
+   TEXT FILE VIEWER
+═══════════════════════════════════════════ */
+const FILES={
+  'about.txt':`╔══════════════════════════════════════════════╗\n║           MILIND PATEL — PROFILE              ║\n╚══════════════════════════════════════════════╝\n\n  Name      : Milind Patel\n  Handle    : 0xMilind\n  Role      : Computer Engineering Student\n  College   : A.D. Patel Institute of Technology\n  Location  : Anand, Gujarat, India (IST)\n  Status    : Available for internship / hire\n  Email     : milindpatel027@gmail.com\n\n  ─────────────────────────────────────────────\n  Curious Computer Engineering student with\n  hands-on experience in cybersecurity labs,\n  VAPT, networking, and security tools.\n  Looking for a role to strengthen skills and\n  grow in a professional cybersecurity environment.\n\n  ─────────────────────────────────────────────\n  Education:  B.E. Computer Engineering (CGPA: 8.0)\n              ADIT, CVMU — Jun 2022 – Jun 2026\n  Languages:  HTML · CSS · Python · SQL\n  Focus:      VAPT · OWASP Top 10 · Network Security\n  ─────────────────────────────────────────────`,
+  'resume.pdf':'[Binary file — PDF viewer not available in terminal mode]\n\nUse: The resume PDF is available for download.\nVisit the main portfolio ? Download Resume button.',
+  'README.md':'# Portfolio Projects\n\n1. WiFi Attack Detector  — Python-based deauth attack detection\n2. SecureShare           — Encrypted file/text sharing platform\n3. Job Application Tracker — AI-powered job tracking web app\n\nAll projects built with security-first approach.',
+  'internship_notes.md':'# Internship Experience\n\n## Cyber Security Intern — Hacktify Cybersecurity\nFeb 2025 – Mar 2025 (Online)\n\n## Key Work\n- Explored and tested real-world vulnerabilities\n  including IDOR, SQL Injection (SQLi), XSS, CORS, CSRF\n- Assisted in web application penetration testing\n  and vulnerability assessments\n- Gained practical experience with Burp Suite,\n  Nmap, and Wireshark\n\n## Tools Used\nBurp Suite · Nmap · Wireshark · Metasploit · Nessus',
+  'flag.txt':'╔══════════════════════════════════════╗\n║  🏴 CTF{y0u_cr4ck3d_th3_c0d3}  🏴   ║\n║                                      ║\n║  Congratulations, operator.          ║\n║  You found the hidden flag.          ║\n║  True hackers explore everything.    ║\n╚══════════════════════════════════════╝',
+  'targets.lst':'# [CLASSIFIED]\n# Authorized penetration testing targets\n\n10.0.0.0/8        # Internal lab network\n172.16.0.0/16     # Dev environment\n192.168.1.0/24    # Home lab\nhackthebox.eu     # CTF platform\ntryhackme.com     # Training platform',
+  'exploit_db.enc':'[ENCRYPTED FILE]\nAlgorithm: AES-256-CBC\nKey required for decryption.\n\nThis file contains classified exploit chains.\nAccess denied without proper clearance.',
+  '.bashrc':'# ~/.bashrc — GHOST_OS Configuration\nexport PS1="\\[\\033[1;32m\\]\\u@ghost-os\\[\\033[0m\\]:\\[\\033[1;34m\\]\\w\\[\\033[0m\\]$ "\nexport PATH=$PATH:/opt/tools/bin\nalias ll="ls -la"\nalias nmap="nmap --script=vuln"\nalias msf="msfconsole -q"\nexport TERM=xterm-256color\n# CTF mode enabled',
+  'web-security.conf':'[MODULE] Web Security\nProficiency: ████████░░ 80%\n\nTools: Burp Suite · Wireshark · Nmap · Nessus\nSkills: OWASP Top 10 · XSS · SQLi · CSRF · CORS · IDOR\n        VAPT · Web App Pen Testing',
+  'network-analysis.conf':'[MODULE] Network Analysis\nProficiency: ███████░░░ 70%\n\nTools: Wireshark · Nmap · Scapy · Tcpdump\nSkills: TCP/IP · DNS · DHCP · Subnetting\n        Routing & Switching · Packet Analysis\n        OSI & TCP/IP Models · Firewalls (Basic)',
+  'python-automation.py':'#!/usr/bin/env python3\n"""Security Automation Module"""\n# Proficiency: ███████░░░ 70%\n#\n# Stack: Python 3 · Scapy\n#        HTML · CSS · SQL\n#\n# Skills: WiFi Attack Detection\n#         Scripting · Automation\n#         Cloud Computing (MS Azure)',
+  'vuln-assessment.sh':'#!/bin/bash\n# Vulnerability Assessment Module\n# Proficiency: ████████░░ 80%\n#\n# Tools: Nessus · Metasploit · Burp Suite\n#        Nmap · Wireshark\n#\n# Skills: VAPT · OWASP Top 10\n#         Log Review · Reconnaissance',
+};
+'Google-Cybersecurity.cert TryHackMe-PreSec.cert TryHackMe-JrPentester.cert'.split(' ').forEach(n=>{
+  const name=n.replace('.cert','').replace(/-/g,' ');
+  FILES[n]=`╔═══════════════════════════════════╗\n║  CERTIFICATE OF ACHIEVEMENT       ║\n╠═══════════════════════════════════╣\n║                                   ║\n║  ${name.padEnd(33)}║\n║  Holder: Milind Patel             ║\n║  Status: ✓ VERIFIED               ║\n║                                   ║\n╚═══════════════════════════════════╝`;
+});
+function showTextFile(name){
+  document.getElementById('textTitle').textContent='📝 '+name;
+  document.getElementById('textBody').innerHTML='<pre style="white-space:pre-wrap;color:var(--kali-text);font-size:12px;line-height:1.7">'+(FILES[name]||'[File not found]')+'</pre>';
+}
+
+/* ═══════════════════════════════════════════
+   SYSTEM MONITOR
+═══════════════════════════════════════════ */
+function initMonitor(){
+  const b=document.getElementById('monitorBody');
+  b.innerHTML=`
+    <div style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px"><span style="color:var(--kali-cyan)">CPU Usage</span><span id="cpuVal" style="color:var(--kali-text)">0%</span></div>
+      <div style="height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden"><div id="cpuBar" style="height:100%;background:var(--kali-cyan);border-radius:3px;width:0;transition:width .5s"></div></div>
+    </div>
+    <div style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px"><span style="color:var(--kali-green)">Memory</span><span id="memVal" style="color:var(--kali-text)">0 / 16 GB</span></div>
+      <div style="height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden"><div id="memBar" style="height:100%;background:var(--kali-green);border-radius:3px;width:0;transition:width .5s"></div></div>
+    </div>
+    <div style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px"><span style="color:var(--kali-yellow)">Network I/O</span><span id="netVal" style="color:var(--kali-text)">0 KB/s</span></div>
+      <div style="height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden"><div id="netBar" style="height:100%;background:var(--kali-yellow);border-radius:3px;width:0;transition:width .5s"></div></div>
+    </div>
+    <div style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px"><span style="color:var(--kali-orange)">Disk</span><span style="color:var(--kali-text)">187 / 512 GB</span></div>
+      <div style="height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden"><div style="height:100%;background:var(--kali-orange);border-radius:3px;width:36.5%"></div></div>
+    </div>
+    <div style="border-top:1px solid rgba(255,255,255,.06);padding-top:14px;margin-top:8px">
+      <div style="font-size:11px;color:var(--kali-muted);margin-bottom:10px">ACTIVE PROCESSES</div>
+      <div style="font-size:10px;line-height:2;color:var(--kali-text)">
+        <div style="display:flex;justify-content:space-between"><span>ghost-os-kernel</span><span style="color:var(--kali-green)">running</span></div>
+        <div style="display:flex;justify-content:space-between"><span>firewall-daemon</span><span style="color:var(--kali-green)">running</span></div>
+        <div style="display:flex;justify-content:space-between"><span>ids-engine</span><span style="color:var(--kali-green)">running</span></div>
+        <div style="display:flex;justify-content:space-between"><span>vpn-tunnel</span><span style="color:var(--kali-cyan)">connected</span></div>
+        <div style="display:flex;justify-content:space-between"><span>exploit-db-sync</span><span style="color:var(--kali-yellow)">syncing</span></div>
+        <div style="display:flex;justify-content:space-between"><span>tor-proxy</span><span style="color:var(--kali-green)">active</span></div>
+      </div>
+    </div>`;
+  setInterval(()=>{
+    const cpu=Math.floor(Math.random()*30+15);
+    const mem=(Math.random()*4+6).toFixed(1);
+    const net=Math.floor(Math.random()*800+100);
+    document.getElementById('cpuVal').textContent=cpu+'%';
+    document.getElementById('cpuBar').style.width=cpu+'%';
+    document.getElementById('memVal').textContent=mem+' / 16 GB';
+    document.getElementById('memBar').style.width=(mem/16*100)+'%';
+    document.getElementById('netVal').textContent=net+' KB/s';
+    document.getElementById('netBar').style.width=Math.min(net/1000*100,100)+'%';
+  },1500);
+}
+
+/* ═══════════════════════════════════════════
+   TERMINAL — COMMAND ENGINE
+═══════════════════════════════════════════ */
+const termOut=document.getElementById('termOutput');
+const termIn=document.getElementById('termInput');
+let cmdHistory=[],histIdx=-1;
+
+function printLine(html){
+  const d=document.createElement('div');d.className='t-line';d.innerHTML=html;
+  termOut.appendChild(d);termOut.scrollTop=termOut.scrollHeight;
+}
+function printWelcome(){
+  printLine('<span class="t-success">╔══════════════════════════════════════════════════╗</span>');
+  printLine('<span class="t-success">║     GHOST_OS v4.2.1 — Secure Shell Active        ║</span>');
+  printLine('<span class="t-success">║     Operator: milind | Clearance: ROOT           ║</span>');
+  printLine('<span class="t-success">╚══════════════════════════════════════════════════╝</span>');
+  printLine('');
+  printLine('<span class="t-output">Type </span><span class="t-highlight">help</span><span class="t-output"> to see available commands.</span>');
+  printLine('');
+}
+const NEOFETCH_LOGO=`   ╱╲
+  ╱  ╲      
+ ╱ ╱╲ ╲    
+╱ ╱  ╲ ╲   
+╲ ╲  ╱ ╱   
+ ╲ ╲╱ ╱    
+  ╲  ╱     
+   ╲╱`;
+
+const COMMANDS={
+  help(){
+    printLine('<span class="t-bold">Available Commands:</span>');
+    printLine('');
+    const cmds=[
+      ['help','Show this help message'],['neofetch','Display system info'],
+      ['whoami','Current user info'],['ls [path]','List directory'],
+      ['cat <file>','View file contents'],['cd <dir>','Change directory'],
+      ['skills','Show technical skills'],['projects','List all projects'],
+      ['certs','Show certifications'],['contact','Contact information'],
+      ['nmap portfolio','Scan portfolio'],['clear','Clear terminal'],
+      ['exit','Return to portfolio'],['hack','???'],
+    ];
+    cmds.forEach(([c,d])=>printLine(`  <span class="t-highlight">${c.padEnd(20)}</span><span class="t-output">${d}</span>`));
+    printLine('');
+  },
+  neofetch(){
+    const lines=NEOFETCH_LOGO.split('\n');
+    const info=[
+      '',`<span class="nf-label">milind</span>@<span class="nf-label">ghost-os</span>`,
+      '─'.repeat(24),
+      `<span class="nf-label">OS:</span> <span class="nf-val">GHOST_OS 4.2.1 (Kali-based)</span>`,
+      `<span class="nf-label">Kernel:</span> <span class="nf-val">6.1.0-kali9-amd64</span>`,
+      `<span class="nf-label">Shell:</span> <span class="nf-val">ghost-sh 2.1</span>`,
+      `<span class="nf-label">Uptime:</span> <span class="nf-val">B.E. Student (2022–2026)</span>`,
+      `<span class="nf-label">Role:</span> <span class="nf-val">Aspiring Penetration Tester</span>`,
+      `<span class="nf-label">Certs:</span> <span class="nf-val">Google Cyber · TryHackMe</span>`,
+      `<span class="nf-label">Tools:</span> <span class="nf-val">Burp · Nmap · Wireshark</span>`,
+      `<span class="nf-label">Lang:</span> <span class="nf-val">HTML · CSS · Python · SQL</span>`,
+      '',
+    ];
+    const maxL=Math.max(lines.length,info.length);
+    for(let i=0;i<maxL;i++){
+      const logo=(lines[i]||'').padEnd(16);
+      const inf=info[i]||'';
+      printLine(`<span class="t-highlight">${logo}</span>${inf}`);
+    }
+    printLine('');
+  },
+  whoami(){printLine('<span class="t-success">milind</span> <span class="t-output">(root) — Computer Engineering Student & Aspiring Pentester</span>');printLine('');},
+  clear(){termOut.innerHTML='';},
+  exit(){
+    printLine('<span class="t-output">Returning to main portfolio...</span>');
+    setTimeout(()=>{document.body.style.transition='opacity .6s';document.body.style.opacity='0';setTimeout(()=>{window.location.href='main.html'},700)},500);
+  },
+  skills(){
+    printLine('<span class="t-bold">┌─ Technical Arsenal ─────────────────────────────┐</span>');
+    const sk=[
+      ['VAPT / OWASP Top 10','████████░░','80%','#367bf5'],['Networking (TCP/IP)','███████░░░','70%','#56c8f5'],
+      ['Python / Scripting','███████░░░','70%','#f472b6'],['Packet Analysis','███████░░░','70%','#4ade80'],
+      ['Burp Suite / Nmap','████████░░','80%','#fbbf24'],['Cloud (MS Azure)','██████░░░░','60%','#fb923c'],
+    ];
+    sk.forEach(([n,b,p,c])=>printLine(`  <span class="t-output">${n.padEnd(22)}</span><span style="color:${c}">${b}</span> <span class="t-output">${p}</span>`));
+    printLine('<span class="t-bold">└─────────────────────────────────────────────────┘</span>');
+    printLine('');
+  },
+  projects(){
+    printLine('<span class="t-bold">┌─ Deployed Operations ───────────────────────────┐</span>');
+    const pj=[
+      ['WiFi Attack Detector','Completed','Python deauth attack detection w/ Scapy'],
+      ['SecureShare','Completed','Encrypted file/text sharing platform'],
+      ['Job App Tracker','Completed','AI-powered job tracking web app'],
+    ];
+    pj.forEach(([n,s,d],i)=>{
+      const sc=s==='Active'?'t-success':'t-highlight';
+      printLine(`  <span class="t-yellow">[${i+1}]</span> <span class="t-bold">${n.padEnd(20)}</span><span class="${sc}">${s.padEnd(12)}</span><span class="t-output">${d}</span>`);
+    });
+    printLine('<span class="t-bold">└─────────────────────────────────────────────────┘</span>');
+    printLine('<span class="t-output">  Use: cat projects/README.md for details</span>');
+    printLine('');
+  },
+  certs(){
+    printLine('<span class="t-bold">┌─ Verified Credentials ──────────────────────────┐</span>');
+    const cs=[['Google Cybersecurity','Coursera','Mar–May 2025'],['TryHackMe Pre-Security','TryHackMe','Ongoing'],['TryHackMe Jr Pentester','TryHackMe','Ongoing']];
+    cs.forEach(([n,i,id])=>printLine(`  <span class="t-success">✓</span> <span class="t-bold">${n.padEnd(22)}</span><span class="t-output">${i.padEnd(20)}</span><span class="t-highlight">${id}</span>`));
+    printLine('<span class="t-bold">└─────────────────────────────────────────────────┘</span>');
+    printLine('');
+  },
+  contact(){
+    printLine('<span class="t-bold">┌─ Secure Channels ──────────────────────────────┐</span>');
+    printLine('  <span class="t-highlight">📧 Email:</span>    <span class="t-output">milindpatel027@gmail.com</span>');
+
+    printLine('  <span class="t-highlight">🐙 GitHub:</span>   <span class="t-output">github.com/Milind027</span>');
+    printLine('  <span class="t-highlight">💼 LinkedIn:</span> <span class="t-output">linkedin.com/in/milind-patel-47218727a</span>');
+    printLine('  <span class="t-highlight">📍 Location:</span> <span class="t-output">Anand, Gujarat, India</span>');
+    printLine('  <span class="t-highlight">⏰ Response:</span> <span class="t-output">< 24 hours</span>');
+    printLine('<span class="t-bold">└─────────────────────────────────────────────────┘</span>');
+    printLine('');
+  },
+  hack(){
+    printLine('<span class="t-success">[SYS] You already hacked in. Nice try though 😎</span>');
+    printLine('<span class="t-output">Try: neofetch, skills, projects, nmap portfolio</span>');printLine('');
+  },
+};
+
+function handleNmap(args){
+  printLine('<span class="t-output">Starting Nmap 7.94 ( https://nmap.org )</span>');
+  const lines=[
+    {t:'<span class="t-output">Nmap scan report for portfolio.milind.dev</span>',d:400},
+    {t:'<span class="t-output">Host is up (0.0042s latency).</span>',d:800},
+    {t:'<span class="t-bold">PORT      STATE    SERVICE         VERSION</span>',d:1200},
+    {t:'<span class="t-success">22/tcp    open     ssh             GHOST_OS Secure Shell</span>',d:1500},
+    {t:'<span class="t-success">80/tcp    open     http            Portfolio v2.0</span>',d:1800},
+    {t:'<span class="t-success">443/tcp   open     https           TLS 1.3 Secured</span>',d:2100},
+    {t:'<span class="t-success">1337/tcp  open     hack-mode       GHOST_OS CTF Engine</span>',d:2400},
+    {t:'<span class="t-yellow">8080/tcp  filtered alt-http        API Recon Interface</span>',d:2700},
+    {t:'',d:3000},
+    {t:'<span class="t-output">Service Info: OS: GHOST_OS 4.2.1; Kernel: 6.1.0-kali9</span>',d:3200},
+    {t:'<span class="t-output">Nmap done: 1 IP scanned in 3.42 seconds</span>',d:3500},
+  ];
+  lines.forEach(l=>setTimeout(()=>printLine(l.t),l.d));
+  setTimeout(()=>printLine(''),3600);
+}
+function handleLs(args){
+  const path=args||'/home/milind';
+  const full=path.startsWith('/')?path:'/home/milind/'+path.replace(/^~\/?/,'');
+  const dir=FS[full]||FS['/home/milind'];
+  if(!dir||!dir.children){printLine('<span class="t-error">ls: cannot access \''+path+'\': No such directory</span>');return}
+  const entries=Object.entries(dir.children);
+  let out='';entries.forEach(([n,info])=>{
+    const color=info.type==='dir'?'t-highlight':'t-output';
+    out+=`<span class="${color}">${n.padEnd(24)}</span>`;
+  });
+  printLine(out);printLine('');
+}
+function handleCat(args){
+  if(!args){printLine('<span class="t-error">cat: missing file operand</span>');return}
+  const name=args.split('/').pop();
+  if(FILES[name]){
+    FILES[name].split('\n').forEach(l=>printLine('<span class="t-output">'+l.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</span>'));
+    printLine('');
+  }else printLine('<span class="t-error">cat: '+args+': No such file</span>');
+}
+
+termIn.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){
+    const raw=termIn.value.trim();termIn.value='';
+    if(!raw)return;
+    cmdHistory.unshift(raw);histIdx=-1;
+    printLine(`<span class="t-prompt"><span class="t-user">milind</span>@<span class="t-highlight">ghost-os</span>:<span class="t-path">~</span>$ </span><span class="t-cmd">${raw}</span>`);
+    const [cmd,...rest]=raw.split(/\s+/);
+    const args=rest.join(' ');
+    if(COMMANDS[cmd])COMMANDS[cmd](args);
+    else if(cmd==='nmap')handleNmap(args);
+    else if(cmd==='ls')handleLs(args);
+    else if(cmd==='cat')handleCat(args);
+    else if(cmd==='cd')printLine('<span class="t-output">Changed directory to: '+(args||'~')+'</span>');
+    else if(cmd==='sudo')printLine('<span class="t-success">[sudo] You already have root access, operator.</span>');
+    else if(cmd==='rm')printLine('<span class="t-error">[DENIED] Nice try. This system is write-protected.</span>');
+    else if(cmd==='ping')printLine('<span class="t-output">PING '+args+': 64 bytes, time=4.2ms — Host is alive</span>');
+    else printLine(`<span class="t-error">ghost-sh: command not found: ${cmd}</span><span class="t-output">\nType 'help' for available commands.</span>`);
+    printLine('');
+    termOut.scrollTop=termOut.scrollHeight;
+  }else if(e.key==='ArrowUp'){
+    e.preventDefault();
+    if(histIdx<cmdHistory.length-1){histIdx++;termIn.value=cmdHistory[histIdx]}
+  }else if(e.key==='ArrowDown'){
+    e.preventDefault();
+    if(histIdx>0){histIdx--;termIn.value=cmdHistory[histIdx]}else{histIdx=-1;termIn.value=''}
+  }else if(e.key==='Tab'){
+    e.preventDefault();
+    const v=termIn.value;
+    const cmds=Object.keys(COMMANDS).concat(['nmap','ls','cat','cd','sudo','ping']);
+    const match=cmds.filter(c=>c.startsWith(v));
+    if(match.length===1)termIn.value=match[0]+' ';
+    else if(match.length>1)printLine('<span class="t-output">'+match.join('  ')+'</span>');
+  }else if(e.ctrlKey&&e.key==='l'){e.preventDefault();COMMANDS.clear()}
+});
+document.addEventListener('keydown',e=>{
+  if(e.ctrlKey&&e.altKey&&e.key==='t'){e.preventDefault();openApp('terminal')}
+  if(e.ctrlKey&&e.key==='e'){e.preventDefault();openApp('files')}
+  if(e.key==='Escape'){closeLauncher()}
+});
+
+/* ═══════════════════════════════════════════
+   ACTIVITIES LAUNCHER
+═══════════════════════════════════════════ */
+function toggleLauncher(){
+  const l=document.getElementById('launcher');
+  l.classList.toggle('open');
+  if(l.classList.contains('open')){document.getElementById('launcherSearch').value='';document.getElementById('launcherSearch').focus();filterApps('')}
+}
+function closeLauncher(){document.getElementById('launcher').classList.remove('open')}
+function launchApp(name){closeLauncher();openApp(name);
+  if(name==='wifi')initWifi();
+  if(name==='hash')initHash();
+}
+document.getElementById('launcherSearch').addEventListener('input',e=>filterApps(e.target.value));
+function filterApps(q){
+  const apps=document.querySelectorAll('.launcher-app');
+  q=q.toLowerCase();
+  apps.forEach(a=>{const n=a.querySelector('.launcher-app-name').textContent.toLowerCase();a.style.display=n.includes(q)?'':'none'});
+}
+
+/* ═══════════════════════════════════════════
+   WIFI CRACKER — Brute-force Simulation
+═══════════════════════════════════════════ */
+const wifiNets=[
+  {ssid:'NETGEAR-5G-A2F8',bssid:'AA:BB:CC:DD:EE:01',ch:6,signal:-42,enc:'WPA2',pw:'s3cur3p@ss'},
+  {ssid:'TP-Link_Guest',bssid:'11:22:33:44:55:66',ch:1,signal:-58,enc:'WPA2',pw:'guest1234'},
+  {ssid:'FBI_Surveillance_Van',bssid:'DE:AD:BE:EF:CA:FE',ch:11,signal:-71,enc:'WPA3',pw:'classified'},
+  {ssid:'Linksys00847',bssid:'00:1A:2B:3C:4D:5E',ch:3,signal:-65,enc:'WEP',pw:'password1'},
+  {ssid:'HackMe_If_You_Can',bssid:'FF:00:FF:00:FF:00',ch:9,signal:-38,enc:'WPA2',pw:'tr0lled!!'},
+];
+let wifiTarget=0,wifiCracking=false,wifiInterval=null;
+function initWifi(){
+  const cont=document.getElementById('wifiNetworks');
+  cont.innerHTML='';
+  wifiNets.forEach((n,i)=>{
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-radius:6px;margin-bottom:4px;cursor:pointer;transition:background .15s;border:1px solid transparent;font-size:11px';
+    row.innerHTML=`<span style="color:var(--kali-text)">${n.ssid}</span><span style="color:var(--kali-muted)">${n.enc} | Ch${n.ch} | ${n.signal}dBm</span>`;
+    row.onmouseenter=()=>{row.style.background='rgba(54,123,245,.1)';row.style.borderColor='rgba(54,123,245,.2)'};
+    row.onmouseleave=()=>{if(wifiTarget!==i){row.style.background='';row.style.borderColor='transparent'}};
+    row.onclick=()=>{wifiTarget=i;document.querySelectorAll('#wifiNetworks>div').forEach((r,j)=>{r.style.background=j===i?'rgba(54,123,245,.15)':'';r.style.borderColor=j===i?'rgba(54,123,245,.3)':'transparent'})};
+    cont.appendChild(row);
+  });
+}
+function startWifiCrack(){
+  if(wifiCracking)return;
+  wifiCracking=true;
+  const net=wifiNets[wifiTarget];
+  const log=document.getElementById('wifiLog');
+  const bar=document.getElementById('wifiProgressFill');
+  log.innerHTML='';bar.style.width='0';
+  const chars='abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+  let progress=0,attempts=0;
+  const total=Math.floor(Math.random()*40+30);
+  const addLog=(t,c)=>{const d=document.createElement('div');d.style.color=c||'var(--kali-muted)';d.textContent=t;log.appendChild(d);log.scrollTop=log.scrollHeight};
+  addLog(`[*] Target: ${net.ssid} (${net.bssid})`,'var(--kali-cyan)');
+  addLog(`[*] Encryption: ${net.enc} | Channel: ${net.ch}`);
+  addLog('[*] Capturing handshake...');
+  setTimeout(()=>{
+    addLog('[+] Handshake captured!','var(--kali-green)');
+    addLog('[*] Starting dictionary + brute-force attack...');
+    wifiInterval=setInterval(()=>{
+      attempts++;
+      const fake=Array.from({length:Math.floor(Math.random()*6+4)},()=>chars[Math.floor(Math.random()*chars.length)]).join('');
+      progress=Math.min((attempts/total)*100,99);
+      bar.style.width=progress+'%';
+      addLog(`[${attempts}] Trying: ${fake}`);
+      if(attempts>=total){
+        clearInterval(wifiInterval);
+        bar.style.width='100%';bar.style.background='linear-gradient(90deg,var(--kali-green),#22d3ee)';
+        addLog(`\n[✓] KEY FOUND: ${net.pw}`,'var(--kali-green)');
+        addLog(`[✓] Network "${net.ssid}" cracked in ${attempts} attempts!`,'var(--kali-green)');
+        wifiCracking=false;
+      }
+    },120);
+  },1500);
+}
+function resetWifi(){if(wifiInterval)clearInterval(wifiInterval);wifiCracking=false;document.getElementById('wifiLog').innerHTML='';document.getElementById('wifiProgressFill').style.width='0';document.getElementById('wifiProgressFill').style.background='linear-gradient(90deg,var(--kali-blue),var(--kali-cyan))';initWifi()}
+
+/* ═══════════════════════════════════════════
+   PORT SCANNER — Interactive Nmap Lite
+═══════════════════════════════════════════ */
+const commonPorts=[
+  {p:21,s:'FTP',v:'vsftpd 3.0.5'},{p:22,s:'SSH',v:'OpenSSH 8.9'},{p:23,s:'Telnet',v:''},
+  {p:25,s:'SMTP',v:'Postfix'},{p:53,s:'DNS',v:'BIND 9.18'},{p:80,s:'HTTP',v:'Apache 2.4.54'},
+  {p:110,s:'POP3',v:'Dovecot'},{p:135,s:'MSRPC',v:''},{p:139,s:'NetBIOS',v:'Samba'},
+  {p:443,s:'HTTPS',v:'nginx 1.24'},{p:445,s:'SMB',v:'Samba 4.17'},{p:993,s:'IMAPS',v:'Dovecot'},
+  {p:1433,s:'MSSQL',v:'SQL Server 2019'},{p:1337,s:'HACK',v:'Ghost Engine'},
+  {p:3306,s:'MySQL',v:'MariaDB 10.11'},{p:3389,s:'RDP',v:'MS Terminal'},
+  {p:5432,s:'PostgreSQL',v:'15.4'},{p:6379,s:'Redis',v:'7.2'},
+  {p:8080,s:'HTTP-ALT',v:'Tomcat 10'},{p:8443,s:'HTTPS-ALT',v:''},
+  {p:27017,s:'MongoDB',v:'6.0'},{p:9200,s:'Elastic',v:'8.10'},
+];
+function startPortScan(){
+  const target=document.getElementById('scanTarget').value||'192.168.1.1';
+  const out=document.getElementById('portResults');
+  out.innerHTML=`<div style="color:var(--kali-cyan);margin-bottom:8px">Starting Nmap scan on ${target}...</div>`;
+  const selected=commonPorts.sort(()=>Math.random()-.5).slice(0,12).sort((a,b)=>a.p-b.p);
+  let i=0;
+  const interval=setInterval(()=>{
+    if(i>=selected.length){
+      clearInterval(interval);
+      const openC=out.querySelectorAll('.port-open').length;
+      out.innerHTML+=`<div style="margin-top:10px;color:var(--kali-cyan);font-size:11px">Scan complete: ${selected.length} ports scanned, ${openC} open.</div>`;
+      return;
+    }
+    const port=selected[i];
+    const r=Math.random();
+    const state=r>.35?'open':r>.15?'closed':'filtered';
+    const cls=state==='open'?'port-open':state==='closed'?'port-closed':'port-filtered';
+    const row=document.createElement('div');row.className='port-row';
+    row.innerHTML=`<span>${port.p}/tcp</span><span class="${cls}">${state}</span><span style="color:var(--kali-muted)">${port.s}</span><span style="color:var(--kali-text)">${state==='open'?port.v:''}</span>`;
+    out.appendChild(row);out.scrollTop=out.scrollHeight;
+    i++;
+  },200);
+}
+
+/* ═══════════════════════════════════════════
+   HASH DECODER — Quiz Game
+═══════════════════════════════════════════ */
+const hashDB=[
+  {plain:'password',md5:'5f4dcc3b5aa765d61d8327deb882cf99',type:'MD5'},
+  {plain:'admin',md5:'21232f297a57a5a743894a0e4a801fc3',type:'MD5'},
+  {plain:'root',sha1:'dc76e9f0c0006e8f919e0c515c66dbba3982f785',type:'SHA-1'},
+  {plain:'letmein',sha256:'1c8bfe8f801d79745c4631d09fff36c82aa37fc4cce4fc946683d7b336b63032',type:'SHA-256'},
+  {plain:'dragon',md5:'8621ffdbc5698829397d97767ac13db3',type:'MD5'},
+  {plain:'qwerty',sha1:'b1b3773a05c0ed0176787a4f1574ff0075f7521e',type:'SHA-1'},
+  {plain:'123456',md5:'e10adc3949ba59abbe56e057f20f883e',type:'MD5'},
+  {plain:'monkey',sha256:'000c285457fc971f862a79b786476c78812c8897063c6fa9c045f579a3b2d63f',type:'SHA-256'},
+];
+let hashRound=0,hashScoreVal=0,hashCurrent=null,hashOrder=[];
+function initHash(){
+  hashRound=0;hashScoreVal=0;hashOrder=[...hashDB].sort(()=>Math.random()-.5).slice(0,5);
+  document.getElementById('hashLog').innerHTML='';
+  document.getElementById('hashScore').textContent='Score: 0';
+  nextHash();
+}
+function nextHash(){
+  if(hashRound>=hashOrder.length){
+    document.getElementById('hashValue').textContent='🎉 Challenge Complete!';
+    document.getElementById('hashOptions').innerHTML='';
+    document.getElementById('hashRound').textContent='Done!';
+    const log=document.getElementById('hashLog');
+    log.innerHTML+=`<div style="color:var(--kali-green);font-weight:600">Final Score: ${hashScoreVal}/${hashOrder.length} — ${hashScoreVal===hashOrder.length?'Perfect! 🏆':'Good try!'}</div>`;
+    return;
+  }
+  hashCurrent=hashOrder[hashRound];
+  const hashStr=hashCurrent.md5||hashCurrent.sha1||hashCurrent.sha256;
+  document.getElementById('hashValue').textContent=hashStr;
+  document.getElementById('hashRound').textContent=`Round ${hashRound+1}/${hashOrder.length}`;
+  const opts=document.getElementById('hashOptions');opts.innerHTML='';
+  const wrongAnswers=hashDB.filter(h=>h.plain!==hashCurrent.plain).sort(()=>Math.random()-.5).slice(0,3).map(h=>h.plain);
+  const choices=[hashCurrent.plain,...wrongAnswers].sort(()=>Math.random()-.5);
+  choices.forEach(c=>{
+    const btn=document.createElement('button');btn.className='game-btn';btn.textContent=c;
+    btn.onclick=()=>checkHash(c);opts.appendChild(btn);
+  });
+}
+function checkHash(answer){
+  const log=document.getElementById('hashLog');
+  if(answer===hashCurrent.plain){
+    hashScoreVal++;
+    log.innerHTML+=`<div style="color:var(--kali-green)">[✓] Round ${hashRound+1}: "${answer}" is correct! (${hashCurrent.type})</div>`;
+  }else{
+    log.innerHTML+=`<div style="color:var(--kali-red)">[✗] Round ${hashRound+1}: Wrong! Answer was "${hashCurrent.plain}" (${hashCurrent.type})</div>`;
+  }
+  log.scrollTop=log.scrollHeight;
+  document.getElementById('hashScore').textContent=`Score: ${hashScoreVal}`;
+  hashRound++;nextHash();
+}
+</script>
+</body>
+</html>
